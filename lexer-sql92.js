@@ -158,9 +158,9 @@ var TokenMatcherL1 = module.exports.TokenMatcherL1 = function(options) {
 }
 util.inherits(TokenMatcherL1,lexer.TokenMatcherL1);
 
-var passthrough$ = function (type) {
+var passthrough$ = function (name) {
     return function (token) {
-        token.type === this.type ? this.consume(token).complete() : this.reject();
+        token.name === this.name ? this.consume(token).complete() : this.reject();
     }
 }
 
@@ -170,10 +170,10 @@ TokenMatcherL1.prototype.$string = passthrough$();
 
 var typedStringMatcher$ = function (prefix) {
    return function (token) {
-       if ( token.type != '$letters' || token.value.toLowerCase() != prefix ) return this.reject();
+       if ( token.name != '$letters' || token.value.toLowerCase() != prefix ) return this.reject();
        this.consume(token);
        this.active = function (token) {
-           if (token.type != '$string') return this.revert();
+           if (token.name != '$string') return this.revert();
            this.consume(token).complete();
        };
        this.active.value = function () { return this.buffer[1].value }
@@ -187,13 +187,13 @@ TokenMatcherL1.prototype.$xstring = typedStringMatcher$('x');
 TokenMatcherL1.prototype.$identifierQuoted = passthrough$();
 
 var unsignedInteger$ = function (next) {
-    return function (token) { token.type == '$digits' ? this.consume(token) : next ? next.call(this,token) : this.reject() };
+    return function (token) { token.name == '$digits' ? this.consume(token) : next ? next.call(this,token) : this.reject() };
 }
 
 var integerOnly$ = function (next) {
     var integer = unsignedInteger$(next);
     return function (token) {
-        if (token.type != '$digits') { return this.revert() }
+        if (token.name != '$digits') { return this.revert() }
         this.consume(token);
         this.active = integer;
     }
@@ -203,16 +203,16 @@ var exactUnsignedNumericLiteral$ = function (next) {
     var unsignedInteger = unsignedInteger$(next);
     var integerOnly = integerOnly$(next);
     var integerDotInteger = unsignedInteger$(function (token){
-        if (token.type!='$symbol' || token.value!='.') { return next ? next.call(this,token) : this.reject() }
+        if (token.name!='$symbol' || token.value!='.') { return next ? next.call(this,token) : this.reject() }
         this.consume(token);
         this.active = unsignedInteger;
     });
     return function (token) {
-        if (token.type == '$digits') {
+        if (token.name == '$digits') {
             this.consume(token);
             this.active = integerDotInteger;
         }
-        else if (token.type == '$symbol' && token.value=='.') {
+        else if (token.name == '$symbol' && token.value=='.') {
             this.consume(token);
             this.active = integerOnly;
         }
@@ -225,7 +225,7 @@ var exactUnsignedNumericLiteral$ = function (next) {
 var approximateUnsignedNumericLiteral$ = function (next) {
     var integerOnly = integerOnly$(next);
     var exponent = function (token) {
-        if (token.type == '$symbol' && token.value.match(/^[-+]$/)) {
+        if (token.name == '$symbol' && token.value.match(/^[-+]$/)) {
             this.consume(token);
             this.active = integerOnly;
         }
@@ -235,7 +235,7 @@ var approximateUnsignedNumericLiteral$ = function (next) {
         }
     }
     return exactUnsignedNumericLiteral$(function (token) {
-        if (token.type != '$letters' || token.value.toLowerCase()!='e') { return this.revert() }
+        if (token.name != '$letters' || token.value.toLowerCase()!='e') { return this.revert() }
         this.consume(token);
         this.active = exponent;
     })
@@ -243,21 +243,21 @@ var approximateUnsignedNumericLiteral$ = function (next) {
 
 TokenMatcherL1.prototype.$approximateUnsignedNumber = approximateUnsignedNumericLiteral$();
 TokenMatcherL1.prototype.$approximateSignedNumber = function (token) {
-    if (token.type!='$symbol' || (token.value!='-' && token.value!= '+')) { return this.revert() }
+    if (token.name!='$symbol' || (token.value!='-' && token.value!= '+')) { return this.revert() }
     this.consume(token);
     this.active = this.$approximateUnsignedNumber;
 }
 
 TokenMatcherL1.prototype.$exactUnsignedNumber = exactUnsignedNumericLiteral$();
 TokenMatcherL1.prototype.$exactSignedNumber = function (token) {
-    if (token.type!='$symbol' || (token.value!='-' && token.value!= '+')) { return this.revert() }
+    if (token.name!='$symbol' || (token.value!='-' && token.value!= '+')) { return this.revert() }
     this.consume(token);
     this.active = this.$exactUnsignedNumber;
 }
 
-var passthroughType$ = function (type) {
+var passthroughType$ = function (name) {
     return function (token) {
-        token.type === type ? this.consume(token).complete() : this.reject();
+        token.name === name ? this.consume(token).complete() : this.reject();
     }
 }
 

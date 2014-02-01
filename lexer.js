@@ -14,7 +14,7 @@ var TokenMatcherL0 = module.exports.TokenMatcherL0 = function(options) {
     options.objectMode = true;
     stream.Transform.call(this,options);
     this.active = null;
-    this.type = null;
+    this.name = null;
     this.buffer = '';
     this.matchers = [];
     this.streamPos = 0;
@@ -49,8 +49,8 @@ TokenMatcherL0.prototype.match = function (char) {
 
 TokenMatcherL0.prototype.detect = function (char) {
     for (var ii in this.matchers) {
-        this.type = this.matchers[ii];
-        this[this.type].call(this,char);
+        this.name = this.matchers[ii];
+        this[this.name].call(this,char);
         if (! this.hungry) return;
     }
     this.consume(char).error();
@@ -71,7 +71,7 @@ TokenMatcherL0.prototype._flush = function() {
 TokenMatcherL0.prototype.consume = function(char) {
     if (char==null) char = '';
     if (! this.active) {
-        this.active = this[this.type];
+        this.active = this[this.name];
         this.pos = this.streamPos;
         this.row = this.streamRow;
         this.col = this.streamCol;
@@ -82,11 +82,11 @@ TokenMatcherL0.prototype.consume = function(char) {
     return this;
 }
 
-TokenMatcherL0.prototype.reject = TokenMatcherL0.prototype.complete = function(type,value) {
+TokenMatcherL0.prototype.reject = TokenMatcherL0.prototype.complete = function(name,value) {
     if (!this.active) return;
     if (this.buffer.length || value.length) {
         this.push({
-            type:  type ? type : this.type,
+            name:  name ? name : this.name,
             value: value ? value : this.buffer,
             pos:   this.pos,
             row:   this.row,
@@ -94,7 +94,7 @@ TokenMatcherL0.prototype.reject = TokenMatcherL0.prototype.complete = function(t
             });
     }
     this.active = null;
-    this.type = null;
+    this.name = null;
     this.buffer = '';
     return this;
 }
@@ -108,7 +108,7 @@ var TokenMatcherL1 = module.exports.TokenMatcherL1 = function(options) {
     options.objectMode = true;
     stream.Transform.call(this,options);
     this.active = null;
-    this.type = null;
+    this.name = null;
     this.buffer = [];
     this.matchers = [];
     this.skip = {};
@@ -140,16 +140,16 @@ TokenMatcherL1.prototype.match = function (token) {
 }
 TokenMatcherL1.prototype.consume = function(token) {
     if (! this.active) {
-        this.active = this[this.type];
+        this.active = this[this.name];
     }
     this.matchBuffer.shift();
     if (token) this.buffer.push(token);
     return this;
 }
 
-TokenMatcherL1.prototype.reject = TokenMatcherL1.prototype.complete = function(type,value) {
-    if (!type) type = this.type;
-    if (!type) return;
+TokenMatcherL1.prototype.reject = TokenMatcherL1.prototype.complete = function(name,value) {
+    if (!name) name = this.name;
+    if (!name) return;
     if (!value) {
         if (this.active && this.active.value) {
             value = this.active.value.call(this);
@@ -161,7 +161,7 @@ TokenMatcherL1.prototype.reject = TokenMatcherL1.prototype.complete = function(t
     }
     if (value.length) {
         this.push({
-            type:  type,
+            name:  name,
             value: value,
             pos:   this.buffer[0].pos,
             row:   this.buffer[0].row,
@@ -170,7 +170,7 @@ TokenMatcherL1.prototype.reject = TokenMatcherL1.prototype.complete = function(t
         this.skip = {};
     }
     this.active = null;
-    this.type = null;
+    this.name = null;
     this.buffer = [];
     return this;
 }
@@ -182,9 +182,9 @@ TokenMatcherL1.prototype.error = function(value) {
 TokenMatcherL1.prototype.detect = function (token) {
     var bufferSize = this.matchBuffer.length;
     for (var ii in this.matchers) {
-        this.type = this.matchers[ii];
-        if (this.skip[this.type]) continue;
-        this[this.type].call(this,token);
+        this.name = this.matchers[ii];
+        if (this.skip[this.name]) continue;
+        this[this.name].call(this,token);
         if (bufferSize != this.matchBuffer.length) return;
     }
     this.consume(token).error(this.buffer);
@@ -192,9 +192,9 @@ TokenMatcherL1.prototype.detect = function (token) {
 
 TokenMatcherL1.prototype.revert = function() {
     if (!this.active) return this.reject();
-    this.skip[this.type] = true;
+    this.skip[this.name] = true;
     this.matchBuffer.unshift.apply(this.matchBuffer,this.buffer);
     this.buffer = [];
     this.active = null;
-    this.type = null;
+    this.name = null;
 }
